@@ -8,13 +8,17 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 add_subdirectory(thirdparty/googletest)
 
 # Tasks: concurrency, condition_variable
-add_executable(task_1 src/task-1/main.cpp)
-
-# Dependencies setup
 set(TARGETS
       task_1
+      task_2
+      task_3
 )
 
+foreach(TARGET ${TARGETS})
+  add_executable(${TARGET} src/${TARGET}/main.cpp)
+endforeach()
+
+# Dependencies setup
 foreach(TARGET ${TARGETS})
   target_link_libraries(${TARGET} PUBLIC gtest gmock)
 endforeach()
