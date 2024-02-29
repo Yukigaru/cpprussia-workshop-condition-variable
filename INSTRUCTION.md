@@ -28,4 +28,4 @@ main: signaling the other thread to resume
 another thread: got the signal and resumed
 ```
 
-
+3) Для сборки во время workshop'а вы можете напрямую вызывать компилятор в терминале или можете использовать свой IDE (но настраивать нужно будет самостоятельно).
