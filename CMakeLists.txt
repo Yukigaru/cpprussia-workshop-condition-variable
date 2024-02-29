@@ -17,6 +17,9 @@ set(TARGETS
 
 foreach(TARGET ${TARGETS})
   add_executable(${TARGET} src/${TARGET}/main.cpp)
+
+  target_compile_options(${TARGET} PRIVATE -fsanitize=thread)
+  target_link_options(${TARGET} PRIVATE -fsanitize=thread)
 endforeach()
 
 # Dependencies setup

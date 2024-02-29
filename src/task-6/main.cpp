@@ -20,6 +20,7 @@ public:
 
     T pop() {
         // ждёт, если нет элементов
+        return T{};
     }
 
 private:
