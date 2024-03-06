@@ -3,7 +3,8 @@
 #include <thread>
 #include <iostream>
 #include <vector>
-
+#include <atomic>
+#include "tests.h"
 
 // ThreadFlag позволяет N потокам ждать, пока другой поток не установит флаг на старт (set_flag).
 
@@ -18,8 +19,6 @@ public:
 
     void set_flag() {
         // TODO
-
-        _cv.notify_all();
     }
 
 private:
@@ -29,35 +28,56 @@ private:
 };
 
 
-int main() {
-    const size_t numThreads = 5;
-    ThreadFlag startFlag;
+/*
+ * Tests
+ */
+void test_set_flag_before_wait() {
+    ThreadFlag flag;
+    flag.set_flag();  // Ставим флаг еще до ожидания
 
-    // Function that each thread will run
-    auto threadFunction = [&startFlag]() {
-        std::cout << "thread " << std::this_thread::get_id() << ": is waiting for the signal." << std::endl;
+    std::thread test_thread([&]() {
+        flag.wait();  // Не должно быть заблокировано
+    });
 
-        startFlag.wait();
+    test_thread.join();
 
-        std::cout << "thread " << std::this_thread::get_id() << ": has started imitating some work." << std::endl;
-    };
+    PASS();
+}
 
-    // Create and start threads
-    std::vector<std::thread> threads;
-    for (size_t i = 0; i < numThreads; ++i) {
-        threads.emplace_back(threadFunction);
+void test_wait_then_set_flag() {
+    ThreadFlag flag;
+    std::atomic_int waits_passed{0};
+
+    static constexpr auto NumThreads = 8;
+
+    // Стартуем несколько потоков, которые будут ждать флага
+    std::vector<std::thread> test_threads;
+    for (auto i = 0; i < NumThreads; i++) {
+        test_threads.emplace_back(std::thread{[&]() {
+            flag.wait();  // Заблокируется
+            waits_passed++;
+        }});
+        test_threads.back().detach();
     }
 
-    // Simulate some work or delay in the main thread
-    std::this_thread::sleep_for(std::chrono::seconds(2));  // Main thread does other work
+    std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    EXPECT(waits_passed == 0);  // Проверка, что потоки был и всё еще в ожидании
 
-    // Signal all threads to start
-    std::cout << "main: signaling all threads to start" << std::endl;
-    startFlag.set_flag();
+    flag.set_flag();  // Ставим флаг и разблокируем потоки
 
-    // Join all threads with the main thread
-    for (auto &th : threads) {
-        th.join();
+    std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    EXPECT(waits_passed == NumThreads);  // Проверяем счетчик
+
+    PASS();
+}
+
+int main() {
+    try {
+        test_set_flag_before_wait();
+        test_wait_then_set_flag();
+
+    } catch (const std::exception& e) {
+        std::cerr << e.what() << std::endl;
     }
 
     return 0;
