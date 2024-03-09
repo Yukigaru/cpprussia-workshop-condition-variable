@@ -7,12 +7,10 @@
 #include "tests.h"
 
 // ThreadFlag позволяет N потокам ждать, пока другой поток не установит флаг на старт (set_flag).
+// Флаг устанавливается один раз и навсегда. Если флаг уже установлен к моменту вызова wait(), тогда функция завершается сразу.
 
 class ThreadFlag {
 public:
-    ThreadFlag(): _flag(false) {
-    }
-
     void wait() {
         // TODO
     }
@@ -24,7 +22,7 @@ public:
 private:
     std::mutex _m;
     std::condition_variable _cv;
-    bool _flag;
+    bool _flag{};
 };
 
 

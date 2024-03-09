@@ -2,14 +2,18 @@
 #include <deque>
 #include <mutex>
 #include <condition_variable>
+#include <atomic>
+#include <algorithm>
 #include <thread>
 #include <chrono>
 #include <vector>
+#include "tests.h"
+
 
 // Требования к очереди:
+// - first-in-first-out очередь
 // - thread-safe
-// - fifo очередь
-// - pop блокируется, если нет элементов
+// - pop блокируется, если в очереди нет элементов, и разблокируется как только, как появляется хотя бы один элемент
 
 template <typename T>
 class ConcurrentFIFOQueue {
@@ -33,29 +37,105 @@ private:
 };
 
 
-void worker_thread_func(ConcurrentFIFOQueue<int> &queue, unsigned idx) {
-    while (true) {
-        auto v = queue.pop();
-        std::cout << "thread " << idx << ": got value " << v << std::endl;
-    }
+/*
+ * Tests
+ */
+void test_multiple_push_pop() {
+    ConcurrentFIFOQueue<int> queue;
+
+    queue.push(1);
+    queue.push(2);
+    queue.push(3);
+
+    EXPECT(queue.pop() == 1);
+    EXPECT(queue.pop() == 2);
+    EXPECT(queue.pop() == 3);
+
+    PASS();
 }
 
-int main() {
-    ConcurrentFIFOQueue<int> q;
+void test_wait_condition() {
+    ConcurrentFIFOQueue<int> queue;
+    std::atomic<bool> item_popped{false};
+
+    std::thread consumer{[&]() {
+        queue.pop();
+        item_popped.store(true);
+    }};
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    EXPECT(item_popped.load() == false);
+
+    queue.push(1);
+
+    consumer.join();
+
+    EXPECT(item_popped.load() == true);
+
+    PASS();
+}
+
+void test_multiple_threads() {
+    constexpr int NumThreads = 4;
+    constexpr auto N = 100; // каждый producer поток производит N чисел
+
+    ConcurrentFIFOQueue<int> queue;
+
+    std::vector<int> consumed;
+    std::mutex consumed_mutex;
+
+    auto producer_func = [&](int thread_id) {
+        for (int i = 0; i < N; ++i) {
+            int num = thread_id * N + i;
+            queue.push(num);
+        }
+    };
+
+    auto consumer_func = [&]() {
+        for (int i = 0; i < N; ++i) {
+            int num = queue.pop();
+
+            std::lock_guard<std::mutex> lock(consumed_mutex);
+            consumed.push_back(num);
+        }
+    };
 
     std::vector<std::thread> threads;
-    for (auto i = 0u; i < 8; i++) {
-        threads.emplace_back(std::thread{worker_thread_func, std::ref(q), i});
+
+    for (int i = 0; i < NumThreads; ++i) {
+        threads.emplace_back(producer_func, i);
+        threads.emplace_back(consumer_func);
     }
 
-    // наполняем значениями
-    for (auto i = 0u; i < 256; i++) {
-        q.push(rand());
-    }
-
-    // завершение
-    for (auto &t : threads) {
+    for (auto& t : threads) {
         t.join();
+    }
+
+    EXPECT(consumed.size() == N * NumThreads);
+
+    std::sort(std::begin(consumed), std::end(consumed));
+
+    for (int i = 1; i < N; ++i) {
+        EXPECT(consumed[i] == consumed[i-1] + 1);
+    }
+
+    PASS();
+}
+
+
+int main() {
+    try {
+        test_multiple_push_pop();
+        test_wait_condition();
+        test_multiple_threads();
+
+    } catch (const std::exception& e) {
+        std::cerr << e.what() << std::endl;
     }
     return 0;
 }
+
+/*
+ * Усложнение:
+ * - добавьте emplace метод, конструирующий объект in-place
+ */
