@@ -18,9 +18,6 @@
 template <typename T>
 class ConcurrentFIFOQueue {
 public:
-    ConcurrentFIFOQueue() {
-    }
-
     void push(const T &val) {
         // TODO
     }
@@ -54,7 +51,7 @@ void test_multiple_push_pop() {
     PASS();
 }
 
-void test_wait_condition() {
+void test_pop_wait() {
     ConcurrentFIFOQueue<int> queue;
     std::atomic<bool> item_popped{false};
 
@@ -126,7 +123,7 @@ void test_multiple_threads() {
 int main() {
     try {
         test_multiple_push_pop();
-        test_wait_condition();
+        test_pop_wait();
         test_multiple_threads();
 
     } catch (const std::exception& e) {
