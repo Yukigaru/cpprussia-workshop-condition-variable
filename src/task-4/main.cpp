@@ -59,7 +59,7 @@ void test_wait_then_set_flag() {
     }
 
     std::this_thread::sleep_for(std::chrono::milliseconds(10));
-    EXPECT(waits_passed == 0);  // Проверка, что потоки был и всё еще в ожидании
+    EXPECT(waits_passed == 0);  // Проверка, что потоки были и всё еще в ожидании
 
     flag.set_flag();  // Ставим флаг и разблокируем потоки
 
