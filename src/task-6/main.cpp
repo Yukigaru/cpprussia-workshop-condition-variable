@@ -18,15 +18,18 @@ public:
     }
 
     void push(const T &val) {
+        std::unique_lock<std::mutex> l{_m};
+        // ...
     }
 
     T pop() {
+        std::unique_lock<std::mutex> l{_m};
+        // ...
         return T{};
     }
 
 private:
     std::mutex _m;
-    std::condition_variable _cv;
 
     std::deque<T> _queue;
     size_t _limit;

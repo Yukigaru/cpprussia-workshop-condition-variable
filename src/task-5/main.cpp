@@ -133,5 +133,9 @@ int main() {
 
 /*
  * Усложнение:
- * - добавьте emplace метод, конструирующий объект in-place
+ * - вопрос: в push должен быть notify_one или notify_all? в чем разница?
+ *
+ * - добавьте ConcurrentFIFOQueue::push(T &&) метод, который перемещает объект в контейнер, а не копирует
+ *
+ * - добавьте ConcurrentFIFOQueue::emplace метод, конструирующий объект in-place
  */

@@ -10,6 +10,8 @@
 #include <stdexcept>
 #include "tests.h"
 
+// std::cv_status::timeout
+
 template <typename T>
 class ConcurrentFIFOQueue {
 public:
@@ -30,7 +32,6 @@ public:
 
 private:
     std::mutex _m;
-    std::condition_variable _cv;
 
     std::deque<T> _queue;
     size_t _limit;
@@ -49,17 +50,17 @@ void test_multiple_push_pop() {
 
     int value;
 
-    bool timed_out = queue.pop(value);
+    bool success = queue.pop(value);
+    EXPECT(success);
     EXPECT(value == 1);
-    EXPECT(!timed_out);
 
-    timed_out = queue.pop(value);
+    success = queue.pop(value);
+    EXPECT(success);
     EXPECT(value == 2);
-    EXPECT(!timed_out);
 
-    timed_out = queue.pop(value);
+    success = queue.pop(value);
+    EXPECT(success);
     EXPECT(value == 3);
-    EXPECT(!timed_out);
 
     PASS();
 }
@@ -220,3 +221,6 @@ int main() {
     }
     return 0;
 }
+/* Усложнения:
+ * - добавьте метод stop_all(), который прерывает все ожидающие в push/pop потоки
+ */

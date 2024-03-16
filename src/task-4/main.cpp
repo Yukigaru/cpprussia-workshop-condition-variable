@@ -6,7 +6,7 @@
 #include <atomic>
 #include "tests.h"
 
-// ThreadFlag позволяет N потокам ждать, пока другой поток не установит флаг на старт (set_flag).
+// ThreadFlag позволяет нескольким потокам ждать, пока другой поток не установит флаг на старт (set_flag).
 // Флаг устанавливается один раз и навсегда. Если флаг уже установлен к моменту вызова wait(), тогда функция завершается сразу.
 
 class ThreadFlag {
@@ -66,6 +66,7 @@ void test_wait_then_set_flag() {
     std::this_thread::sleep_for(std::chrono::milliseconds(10));
     EXPECT(waits_passed == NumThreads);  // Проверяем счетчик
 
+    // Не завершается этот тест? Используешь ли ты notify_all, вместо notify_one?
     PASS();
 }
 
