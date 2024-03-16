@@ -16,7 +16,7 @@ void another_thread_func() {
     std::cout << "another thread: waiting..." << std::endl;
 
     while (!resume.load()) {
-        // busy wait
+        // TODO: замените busy-wait на засыпание с condition_variable
     }
 
     std::cout << "another thread: got the signal and resumed" << std::endl;
@@ -29,7 +29,7 @@ int main() {
     std::cout << "main: signaling the other thread to resume" << std::endl;
 
     resume.store(true);
-    // TODO: notify a condition_variable
+    // TODO: сделать condition_variable notify_one
 
     t.join();
     return 0;
