@@ -6,7 +6,7 @@
 // Пример race condition: переменная resume меняется не под мьютексом.
 // Нужно исправить ошибку.
 
-std::atomic_bool resume;
+bool resume{false};
 std::condition_variable cv;
 std::mutex m;
 
@@ -15,8 +15,8 @@ void first_thread_func() {
 
     std::unique_lock<std::mutex> l{m};
 
-    while (resume.load() == false) {
-        //std::this_thread::sleep_for(std::chrono::microseconds(1));
+    while (!resume) {
+        std::this_thread::sleep_for(std::chrono::microseconds(1));
         cv.wait(l);
     }
 
@@ -26,7 +26,7 @@ void first_thread_func() {
 void second_thread_func() {
     std::cout << "thread 2: signaling the other thread to resume\n";
 
-    resume.store(true);
+    resume = true;
     cv.notify_one();
 }
 
@@ -38,3 +38,8 @@ int main() {
     t2.join();
     return 0;
 }
+/*
+ * Усложнение:
+ * - почему использование std::atomic_bool вместо bool не поможет?
+ * - изучите и попробуйте std::condition_variable_any вместе с std::shared_lock
+ * */
