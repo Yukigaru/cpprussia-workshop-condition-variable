@@ -6,7 +6,6 @@
 // Пример lost wakeup: второй поток вероятнее всего не проснётся, несмотря на то, что был вызван notify_one.
 // Нужно исправить ошибку.
 
-std::atomic_bool resume;
 std::condition_variable cv;
 std::mutex m;
 
