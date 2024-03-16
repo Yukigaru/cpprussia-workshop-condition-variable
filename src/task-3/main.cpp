@@ -11,7 +11,7 @@ std::condition_variable cv;
 std::mutex m;
 
 void first_thread_func() {
-    std::cout << "thread 1: waiting...\n";
+    std::cout << "thread 1: waiting..." << std::endl;
 
     std::unique_lock<std::mutex> l{m};
 
@@ -20,11 +20,11 @@ void first_thread_func() {
         cv.wait(l);
     }
 
-    std::cout << "thread 1: got the signal and resumed\n";
+    std::cout << "thread 1: got the signal and resumed" << std::endl;
 }
 
 void second_thread_func() {
-    std::cout << "thread 2: signaling the other thread to resume\n";
+    std::cout << "thread 2: signaling the other thread to resume" << std::endl;
 
     resume = true;
     cv.notify_one();

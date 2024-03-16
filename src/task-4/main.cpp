@@ -27,7 +27,7 @@ private:
 
 
 /*
- * Tests
+ * Тесты
  */
 void test_set_flag_before_wait() {
     ThreadFlag flag;

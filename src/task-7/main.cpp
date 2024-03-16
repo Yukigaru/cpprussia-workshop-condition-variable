@@ -38,7 +38,7 @@ private:
 
 
 /*
- * Tests
+ * Тесты
  */
 void test_multiple_push_pop() {
     ConcurrentFIFOQueue<int> queue;

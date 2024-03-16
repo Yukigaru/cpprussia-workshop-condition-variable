@@ -35,7 +35,7 @@ private:
 
 
 /*
- * Tests
+ * Тесты
  */
 void test_multiple_push_pop() {
     ConcurrentFIFOQueue<int> queue;
@@ -118,7 +118,6 @@ void test_multiple_threads() {
 
     PASS();
 }
-
 
 int main() {
     try {

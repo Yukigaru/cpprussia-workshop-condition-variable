@@ -19,7 +19,7 @@ void another_thread_func() {
 }
 
 int main() {
-    std::thread t(another_thread_func);
+    std::thread t{another_thread_func};
 
     std::cout << "main: signaling the other thread to resume" << std::endl;
 
