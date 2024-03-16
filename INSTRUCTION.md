@@ -16,12 +16,12 @@ Ubuntu:
 > cd ..
 > cmake --build build
 
-... Built target task_1
+... Built target task-1
 ```
 
 2) Запустите собранный бинарь. Убедитесь, что запускается.
 ```
-> ./build/task_1
+> ./build/task-1
 
 another thread: waiting...
 main: signaling the other thread to resume
