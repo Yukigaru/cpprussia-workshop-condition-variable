@@ -12,7 +12,7 @@ std::mutex m;
 void another_thread_func() {
     std::cout << "another: waiting..." << std::endl;
 
-    std::unique_lock<std::mutex> l{m};
+    std::unique_lock l{m};
     cv.wait(l);
 
     std::cout << "another: got the signal and resumed" << std::endl;

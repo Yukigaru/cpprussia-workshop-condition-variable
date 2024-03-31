@@ -18,12 +18,12 @@ public:
     }
 
     void push(const T &val) {
-        std::unique_lock<std::mutex> l{_m};
+        std::unique_lock l{_m};
         // ...
     }
 
     T pop() {
-        std::unique_lock<std::mutex> l{_m};
+        std::unique_lock l{_m};
         // ...
         return T{};
     }

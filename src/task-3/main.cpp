@@ -13,7 +13,7 @@ std::mutex m;
 void first_thread_func() {
     std::cout << "thread 1: waiting..." << std::endl;
 
-    std::unique_lock<std::mutex> l{m};
+    std::unique_lock l{m};
 
     while (!resume) {
         std::this_thread::sleep_for(std::chrono::microseconds(1));
