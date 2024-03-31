@@ -3,6 +3,10 @@
 #include <string>
 #include <iostream>
 
+#ifdef _MSC_VER
+    // there's no "pretty function" in MSVC
+    #define __PRETTY_FUNCTION__ __FUNCTION__
+#endif
 
 #define EXPECT(expr) \
     if (!(expr)) { \
