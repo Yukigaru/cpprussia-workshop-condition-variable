@@ -6,7 +6,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 option(ENABLE_TSAN "Enable thread sanitizer" OFF)
 
-# Tasks: concurrency, condition_variable
+# Exercises
 set(TARGETS
       task-1
       task-2
@@ -33,3 +33,10 @@ if(UNIX)
     target_link_libraries(${TARGET} PUBLIC pthread)
   endforeach()
 endif()
+
+# Testing
+enable_testing()
+foreach(TARGET ${TARGETS})
+  add_test(NAME ${TARGET} COMMAND ${TARGET})
+  set_tests_properties(${TARGET} PROPERTIES TIMEOUT 5) # 5 sec limit
+endforeach()
