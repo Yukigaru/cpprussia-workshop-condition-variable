@@ -33,3 +33,10 @@ if(UNIX)
     target_link_libraries(${TARGET} PUBLIC pthread)
   endforeach()
 endif()
+
+# Testing
+enable_testing()
+foreach(TARGET ${TARGETS})
+  add_test(NAME ${TARGET} COMMAND ${TARGET})
+  set_tests_properties(${TARGET} PROPERTIES TIMEOUT 5) # 5 sec limit
+endforeach()
