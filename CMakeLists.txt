@@ -6,7 +6,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 option(ENABLE_TSAN "Enable thread sanitizer" OFF)
 
-# Tasks: concurrency, condition_variable
+# Exercises
 set(TARGETS
       task-1
       task-2
@@ -14,6 +14,7 @@ set(TARGETS
       task-4
       task-5
       task-6
+      task-7
 )
 
 foreach(TARGET ${TARGETS})
