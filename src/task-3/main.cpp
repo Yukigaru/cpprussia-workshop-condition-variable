@@ -1,45 +1,89 @@
-#include <atomic>
 #include <condition_variable>
-#include <iostream>
+#include <mutex>
 #include <thread>
+#include <iostream>
+#include <vector>
+#include <atomic>
+#include "tests.h"
 
-// Пример race condition: переменная resume меняется не под мьютексом.
-// Нужно исправить ошибку.
-
-bool resume{false};
-std::condition_variable cv;
-std::mutex m;
-
-void first_thread_func() {
-    std::cout << "thread 1: waiting..." << std::endl;
-
-    std::unique_lock l{m};
-
-    while (!resume) {
-        std::this_thread::sleep_for(std::chrono::microseconds(1));
-        cv.wait(l);
+// Latch - примитив синхронизации, позволяющий набору потоков подождать друг друга и стартовать вместе.
+// Защёлка инициализируется со счётчиком, равным количеству ожидаемых потоков.
+// Потоки блокируются в arrive_and_wait, уменьшая при этом счётчик, пока он не обнулится,
+// после чего все потоки разблокируются.
+class Latch {
+  public:
+    Latch(int64_t threads_expected): _counter(threads_expected) {
     }
 
-    std::cout << "thread 1: got the signal and resumed" << std::endl;
+    void arrive_and_wait() {
+      std::unique_lock l{m};
+      // ...
+    }
+  private:
+    std::condition_variable cv;
+    std::mutex m;
+    int64_t _counter;
+};
+
+/*
+ * Тесты
+ */
+void test_latch_synchronizes_threads() {
+    constexpr auto num_threads = 16;
+
+    Latch latch{num_threads};
+    std::atomic<int> counter{0};
+
+    auto worker = [&]() {
+        counter.fetch_add(1);
+        latch.arrive_and_wait();
+        EXPECT(counter.load(std::memory_order_relaxed) == num_threads);
+    };
+
+    std::vector<std::thread> threads;
+    for (int i = 0; i < num_threads; ++i) {
+        threads.emplace_back(worker);
+    }
+
+    for (auto& thread : threads) {
+        thread.join();
+    }
+    PASS();
 }
 
-void second_thread_func() {
-    std::cout << "thread 2: signaling the other thread to resume" << std::endl;
+void test_latch_doesnt_reset() {
+    Latch latch{2};
+    bool passed = false;
 
-    resume = true;
-    cv.notify_one();
+    auto func = [&]() {
+        latch.arrive_and_wait();
+        passed = true;
+    };
+    std::thread t1{func};
+    std::thread t2{func};
+    t1.join();
+    t2.join();
+
+    // не должно заблокироваться
+    std::thread t3{[&]() {
+        latch.arrive_and_wait();
+    }};
+    t3.join();
+    PASS();
 }
 
 int main() {
-    std::thread t1(first_thread_func);
-    std::thread t2(second_thread_func);
+    try {
+      test_latch_synchronizes_threads();
+      test_latch_doesnt_reset();
 
-    t1.join();
-    t2.join();
+    } catch (const std::exception& e) {
+        std::cerr << e.what() << std::endl;
+    }
+
     return 0;
 }
 /*
  * Усложнение:
- * - почему использование std::atomic_bool вместо bool не поможет?
- * - изучите и попробуйте std::condition_variable_any вместе с std::shared_lock
+ * - реализовать многоразовый Barrier с тем же методом arrive_and_wait
  * */

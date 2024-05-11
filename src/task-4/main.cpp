@@ -1,83 +1,140 @@
-#include <condition_variable>
-#include <mutex>
-#include <thread>
 #include <iostream>
-#include <vector>
+#include <deque>
+#include <mutex>
+#include <condition_variable>
 #include <atomic>
+#include <algorithm>
+#include <thread>
+#include <chrono>
+#include <vector>
 #include "tests.h"
 
-// ThreadFlag позволяет нескольким потокам ждать, пока другой поток не установит флаг на старт (set_flag).
-// Флаг устанавливается один раз и навсегда. Если флаг уже установлен к моменту вызова wait(), тогда функция завершается сразу.
 
-class ThreadFlag {
+// Требования к очереди:
+// - first-in-first-out очередь
+// - thread-safe
+// - pop блокируется, если в очереди нет элементов, и разблокируется как только, как появляется хотя бы один элемент
+
+template <typename T>
+class ConcurrentFIFOQueue {
 public:
-    void wait() {
+    void push(const T &val) {
         // TODO
     }
 
-    void set_flag() {
+    T pop() {
         // TODO
+        return T{};
     }
 
 private:
     std::mutex _m;
-    std::condition_variable _cv;
-    bool _flag{};
+    std::condition_variable _not_empty_cv;
+    std::deque<T> _queue;
 };
-
 
 /*
  * Тесты
  */
-void test_set_flag_before_wait() {
-    ThreadFlag flag;
-    flag.set_flag();  // Ставим флаг еще до ожидания
+void test_multiple_push_pop() {
+    ConcurrentFIFOQueue<int> queue;
 
-    std::thread test_thread([&]() {
-        flag.wait();  // Не должно быть заблокировано
-    });
+    queue.push(1);
+    queue.push(2);
+    queue.push(3);
 
-    test_thread.join();
+    EXPECT(queue.pop() == 1);
+    EXPECT(queue.pop() == 2);
+    EXPECT(queue.pop() == 3);
 
     PASS();
 }
 
-void test_wait_then_set_flag() {
-    ThreadFlag flag;
-    std::atomic_int waits_passed{0};
+void test_pop_wait() {
+    ConcurrentFIFOQueue<int> queue;
+    std::atomic<bool> item_popped{false};
 
-    static constexpr auto NumThreads = 8;
+    std::thread consumer{[&]() {
+        queue.pop();
+        item_popped.store(true);
+    }};
 
-    // Стартуем несколько потоков, которые будут ждать флага
-    std::vector<std::thread> test_threads;
-    for (auto i = 0; i < NumThreads; i++) {
-        test_threads.emplace_back(std::thread{[&]() {
-            flag.wait();  // Заблокируется
-            waits_passed++;
-        }});
-        test_threads.back().detach();
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    EXPECT(item_popped.load() == false);
+
+    queue.push(1);
+
+    consumer.join();
+
+    EXPECT(item_popped.load() == true);
+
+    PASS();
+}
+
+void test_multiple_threads() {
+    constexpr auto NumThreads = 4;
+    constexpr auto N = 100; // каждый producer поток производит N чисел
+
+    ConcurrentFIFOQueue<int> queue;
+
+    std::vector<int> consumed;
+    std::mutex consumed_mutex;
+
+    auto producer_func = [&](int thread_id) {
+        for (int i = 0; i < N; ++i) {
+            int num = thread_id * N + i;
+            queue.push(num);
+        }
+    };
+
+    auto consumer_func = [&]() {
+        for (int i = 0; i < N; ++i) {
+            int num = queue.pop();
+
+            std::lock_guard<std::mutex> lock(consumed_mutex);
+            consumed.push_back(num);
+        }
+    };
+
+    std::vector<std::thread> threads;
+
+    for (int i = 0; i < NumThreads; ++i) {
+        threads.emplace_back(producer_func, i);
+        threads.emplace_back(consumer_func);
     }
 
-    std::this_thread::sleep_for(std::chrono::milliseconds(10));
-    EXPECT(waits_passed == 0);  // Проверка, что потоки были и всё еще в ожидании
+    for (auto& t : threads) {
+        t.join();
+    }
 
-    flag.set_flag();  // Ставим флаг и разблокируем потоки
+    EXPECT(consumed.size() == N * NumThreads);
 
-    std::this_thread::sleep_for(std::chrono::milliseconds(10));
-    EXPECT(waits_passed == NumThreads);  // Проверяем счетчик
+    std::sort(std::begin(consumed), std::end(consumed));
 
-    // Не завершается этот тест? Используешь ли ты notify_all, вместо notify_one?
+    for (int i = 1; i < N; ++i) {
+        EXPECT(consumed[i] == consumed[i-1] + 1);
+    }
+
     PASS();
 }
 
 int main() {
     try {
-        test_set_flag_before_wait();
-        test_wait_then_set_flag();
+        test_multiple_push_pop();
+        test_pop_wait();
+        test_multiple_threads();
 
     } catch (const std::exception& e) {
         std::cerr << e.what() << std::endl;
     }
-
     return 0;
 }
+
+/*
+ * Усложнение:
+ * - вопрос: в push должен быть notify_one или notify_all? в чем разница?
+ *
+ * - добавьте ConcurrentFIFOQueue::push(T &&) метод, который перемещает объект в контейнер, а не копирует
+ *
+ * - добавьте ConcurrentFIFOQueue::emplace метод, конструирующий объект in-place
+ */

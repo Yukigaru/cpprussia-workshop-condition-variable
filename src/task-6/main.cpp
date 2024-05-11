@@ -7,25 +7,27 @@
 #include <thread>
 #include <chrono>
 #include <vector>
+#include <stdexcept>
 #include "tests.h"
 
+// std::cv_status::timeout
 
 template <typename T>
 class ConcurrentFIFOQueue {
 public:
-    // добавлен лимит на размер очереди
     ConcurrentFIFOQueue(size_t limit = 0): _limit(limit) {
     }
 
-    void push(const T &val) {
-        std::unique_lock l{_m};
-        // ...
+    bool push(const T &val, std::chrono::steady_clock::duration timeout = std::chrono::seconds(0)) {
+        // ждёт, если очередь переполнена, но не дольше, чем timeout (если он задан)
+        // возвращает false, если случился timeout
+        return true;
     }
 
-    T pop() {
-        std::unique_lock l{_m};
-        // ...
-        return T{};
+    bool pop(T &out, std::chrono::steady_clock::duration timeout = std::chrono::seconds(0)) {
+        // ждёт, если нет элементов, но не дольше, чем timeout (если он задан)
+        // возвращает false, если случился timeout
+        return true;
     }
 
 private:
@@ -46,9 +48,19 @@ void test_multiple_push_pop() {
     queue.push(2);
     queue.push(3);
 
-    EXPECT(queue.pop() == 1);
-    EXPECT(queue.pop() == 2);
-    EXPECT(queue.pop() == 3);
+    int value;
+
+    bool success = queue.pop(value);
+    EXPECT(success);
+    EXPECT(value == 1);
+
+    success = queue.pop(value);
+    EXPECT(success);
+    EXPECT(value == 2);
+
+    success = queue.pop(value);
+    EXPECT(success);
+    EXPECT(value == 3);
 
     PASS();
 }
@@ -58,7 +70,8 @@ void test_pop_wait() {
     std::atomic<bool> item_popped{false};
 
     std::thread consumer{[&]() {
-        queue.pop();
+        int unused;
+        queue.pop(unused);
         item_popped.store(true);
     }};
 
@@ -90,7 +103,8 @@ void test_push_wait() {
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
     EXPECT(values_pushed.load() == Limit);
 
-    queue.pop();
+    int unused;
+    queue.pop(unused);
     producer.join();
 
     EXPECT(values_pushed.load() == Limit+1);
@@ -99,7 +113,7 @@ void test_push_wait() {
 }
 
 void test_multiple_threads() {
-    constexpr int NumThreads = 4;
+    constexpr auto NumThreads = 4;
     constexpr auto N = 100; // каждый producer поток производит N чисел
 
     ConcurrentFIFOQueue<int> queue{2}; // лимит в 2 элемента
@@ -116,7 +130,8 @@ void test_multiple_threads() {
 
     auto consumer_func = [&]() {
         for (int i = 0; i < N; ++i) {
-            int num = queue.pop();
+            int num;
+            queue.pop(num);
 
             std::lock_guard<std::mutex> lock(consumed_mutex);
             consumed.push_back(num);
@@ -145,6 +160,52 @@ void test_multiple_threads() {
     PASS();
 }
 
+void test_push_with_timeout() {
+    ConcurrentFIFOQueue<int> queue{1};
+
+    // завершится без таймаута
+    EXPECT(queue.push(1, std::chrono::seconds(1)));
+
+    std::atomic<bool> timeout_occurred{false};
+
+    std::thread producer([&]() {
+        // случится таймаут
+        if (!queue.push(2, std::chrono::milliseconds(100))) {
+            timeout_occurred.store(true);
+        }
+    });
+
+    EXPECT(!timeout_occurred.load());
+
+    producer.join();
+
+    EXPECT(timeout_occurred.load());
+
+    PASS();
+}
+
+void test_pop_with_timeout() {
+    ConcurrentFIFOQueue<int> queue;
+
+    std::atomic<bool> timeout_occurred{false};
+    int dummy;
+
+    std::thread consumer([&]() {
+        // случится таймаут
+        if (!queue.pop(dummy, std::chrono::milliseconds(100))) {
+            timeout_occurred.store(true);
+        }
+    });
+
+    EXPECT(!timeout_occurred.load());
+
+    consumer.join();
+
+    EXPECT(timeout_occurred.load());
+
+    PASS();
+}
+
 int main() {
     try {
         test_multiple_push_pop();
@@ -152,8 +213,14 @@ int main() {
         test_push_wait();
         test_multiple_threads();
 
+        test_push_with_timeout();
+        test_pop_with_timeout();
+
     } catch (const std::exception& e) {
         std::cerr << e.what() << std::endl;
     }
     return 0;
 }
+/* Усложнения:
+ * - добавьте метод stop_all(), который прерывает все ожидающие в push/pop потоки
+ */

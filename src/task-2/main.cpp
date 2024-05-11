@@ -1,34 +1,81 @@
-#include <atomic>
 #include <condition_variable>
-#include <iostream>
+#include <mutex>
 #include <thread>
+#include <iostream>
+#include <vector>
+#include <atomic>
+#include "tests.h"
 
-// Пример lost wakeup: второй поток вероятнее всего не проснётся, несмотря на то, что был вызван notify_one.
-// Нужно исправить ошибку.
+// ThreadFlag позволяет нескольким потокам ждать, пока другой поток не установит флаг на старт (set_flag).
+// Флаг устанавливается один раз и навсегда. Если флаг уже установлен к моменту вызова wait(), тогда функция завершается сразу.
+class ThreadFlag {
+public:
+    void wait() {
+        // TODO
+    }
 
-std::condition_variable cv;
-std::mutex m;
+    void set_flag() {
+        // TODO
+    }
 
-void another_thread_func() {
-    std::cout << "another: waiting..." << std::endl;
+private:
+    std::mutex _m;
+    std::condition_variable _cv;
+    bool _flag{};
+};
 
-    std::unique_lock l{m};
-    cv.wait(l);
+/*
+ * Тесты
+ */
+void test_set_flag_before_wait() {
+    ThreadFlag flag;
+    flag.set_flag();  // Ставим флаг еще до ожидания
 
-    std::cout << "another: got the signal and resumed" << std::endl;
+    std::thread test_thread([&]() {
+        flag.wait();  // Не должно быть заблокировано
+    });
+
+    test_thread.join();
+
+    PASS();
 }
 
-void main_thread_func() {
-    std::cout << "main: signaling the other thread to resume" << std::endl;
+void test_wait_then_set_flag() {
+    ThreadFlag flag;
+    std::atomic_int waits_passed{0};
 
-    cv.notify_one();
+    static constexpr auto NumThreads = 8;
+
+    // Стартуем несколько потоков, которые будут ждать флага
+    std::vector<std::thread> test_threads;
+    for (auto i = 0; i < NumThreads; i++) {
+        test_threads.emplace_back(std::thread{[&]() {
+            flag.wait();  // Заблокируется
+            waits_passed++;
+        }});
+        test_threads.back().detach();
+    }
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    EXPECT(waits_passed == 0);  // Проверка, что потоки были и всё еще в ожидании
+
+    flag.set_flag();  // Ставим флаг и разблокируем потоки
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    EXPECT(waits_passed == NumThreads);  // Проверяем счетчик
+
+    // Не завершается этот тест? Используешь ли ты notify_all, вместо notify_one?
+    PASS();
 }
 
 int main() {
-    std::thread t1{another_thread_func};
-    std::thread t2{main_thread_func};
+    try {
+        test_set_flag_before_wait();
+        test_wait_then_set_flag();
 
-    t1.join();
-    t2.join();
+    } catch (const std::exception& e) {
+        std::cerr << e.what() << std::endl;
+    }
+
     return 0;
 }

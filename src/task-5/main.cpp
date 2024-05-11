@@ -2,35 +2,37 @@
 #include <deque>
 #include <mutex>
 #include <condition_variable>
-#include <atomic>
 #include <algorithm>
+#include <atomic>
 #include <thread>
 #include <chrono>
 #include <vector>
 #include "tests.h"
 
 
-// Требования к очереди:
-// - first-in-first-out очередь
-// - thread-safe
-// - pop блокируется, если в очереди нет элементов, и разблокируется как только, как появляется хотя бы один элемент
-
 template <typename T>
 class ConcurrentFIFOQueue {
 public:
+    // добавлен лимит на размер очереди
+    ConcurrentFIFOQueue(size_t limit = 0): _limit(limit) {
+    }
+
     void push(const T &val) {
-        // TODO
+        std::unique_lock l{_m};
+        // ...
     }
 
     T pop() {
-        // TODO
+        std::unique_lock l{_m};
+        // ...
         return T{};
     }
 
 private:
     std::mutex _m;
-    std::condition_variable _not_empty_cv;
+
     std::deque<T> _queue;
+    size_t _limit;
 };
 
 
@@ -72,11 +74,35 @@ void test_pop_wait() {
     PASS();
 }
 
+void test_push_wait() {
+    constexpr auto Limit = 2u;
+    ConcurrentFIFOQueue<int> queue{Limit};
+
+    std::atomic_int values_pushed{0};
+
+    std::thread producer([&]() {
+        for (int i = 0; i < Limit + 1; ++i) {
+            queue.push(i);
+            values_pushed++;
+        }
+    });
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    EXPECT(values_pushed.load() == Limit);
+
+    queue.pop();
+    producer.join();
+
+    EXPECT(values_pushed.load() == Limit+1);
+
+    PASS();
+}
+
 void test_multiple_threads() {
-    constexpr int NumThreads = 4;
+    constexpr auto NumThreads = 4;
     constexpr auto N = 100; // каждый producer поток производит N чисел
 
-    ConcurrentFIFOQueue<int> queue;
+    ConcurrentFIFOQueue<int> queue{2}; // лимит в 2 элемента
 
     std::vector<int> consumed;
     std::mutex consumed_mutex;
@@ -123,6 +149,7 @@ int main() {
     try {
         test_multiple_push_pop();
         test_pop_wait();
+        test_push_wait();
         test_multiple_threads();
 
     } catch (const std::exception& e) {
@@ -130,12 +157,3 @@ int main() {
     }
     return 0;
 }
-
-/*
- * Усложнение:
- * - вопрос: в push должен быть notify_one или notify_all? в чем разница?
- *
- * - добавьте ConcurrentFIFOQueue::push(T &&) метод, который перемещает объект в контейнер, а не копирует
- *
- * - добавьте ConcurrentFIFOQueue::emplace метод, конструирующий объект in-place
- */
