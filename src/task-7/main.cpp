@@ -1,155 +1,165 @@
 #include <iostream>
-#include <atomic>
 #include <thread>
-#include <vector>
 #include <mutex>
-#include <deque>
-#include <algorithm>
-#include <cstring> // strerror
-#include <unistd.h>
-#include <linux/futex.h>
-#include <sys/syscall.h>
-#include <sys/time.h>
-#include <limits.h>
+#include <vector>
+#include <condition_variable>
 #include "tests.h"
 
-// Futex system call обёртки
-int futex_wait(void* addr, int val_expected) {
-    // See: https://man7.org/linux/man-pages/man2/futex.2.html
-    return syscall(SYS_futex, addr, FUTEX_WAIT, val_expected, NULL, NULL, 0);
-}
+using namespace std::chrono_literals;
 
-int futex_wake(void* addr, int nwakeups) {
-    return syscall(SYS_futex, addr, FUTEX_WAKE, nwakeups, NULL, NULL, 0);
-}
 
-class ConditionVariable {
+class RWLock {
 public:
-    ConditionVariable() {}
-
-    template <typename Predicate>
-    void wait(std::unique_lock<std::mutex> &lock, Predicate pred) {
+    void lock_reader() {
+        std::unique_lock l{_m};
         // ...
     }
 
-    void notify_one() {
+    void unlock_reader() {
+        std::unique_lock l{_m};
+        // ...
+    }
+
+    void lock() {
+        std::unique_lock l{_m};
+        // ...
+    }
+
+    void unlock() {
+        std::unique_lock l{_m};
         // ...
     }
 
 private:
-    std::atomic_int _wake;
+    std::mutex _m;
+    int _readers_count{0};
+    int _writers_count{0};
 };
 
 /*
  * Тесты
  */
-void test_single_thread_notify() {
-    std::mutex mtx;
-    ConditionVariable cv;
-    bool ready{false};
-
-    std::thread t([&]() {
-        std::unique_lock l{mtx};
-        cv.wait(l, [&]() { return ready; });
-    });
-
-    {
-        std::unique_lock l{mtx};
-        ready = true;
-        cv.notify_one();
-    }
-    t.join();
+void test_simple() {
+    RWLock l;
+    l.lock();
+    l.unlock();
+    l.lock_reader();
+    l.unlock_reader();
     PASS();
 }
 
-template <typename T>
-class Queue {
-public:
-    Queue(size_t limit): _limit(limit) {}
+void test_readers_dont_block() {
+    RWLock l;
+    l.lock_reader();
+    std::thread t{[&]() {
+        // не должно заблокироваться
+        l.lock_reader();
+        l.unlock_reader();
+    }};
+    t.join();
+    l.unlock_reader();
+    PASS();
+}
 
-    void push(const T &val) {
-        std::unique_lock l{_m};
-        _not_full_cv.wait(l, [&]() { return _queue.size() < _limit; });
-        _queue.push_front(val);
-        _not_empty_cv.notify_one();
-    }
+void test_writer_blocks_reader() {
+    RWLock l;
+    l.lock();
 
-    T pop() {
-        std::unique_lock l{_m};
-        _not_empty_cv.wait(l, [&]() { return !_queue.empty(); });
-        auto val = _queue.back();
-        _queue.pop_back();
-        _not_full_cv.notify_one();
-        return val;
-    }
-private:
-    std::mutex _m;
-    ConditionVariable _not_empty_cv;
-    ConditionVariable _not_full_cv;
-    std::deque<T> _queue;
-    size_t _limit;
-};
+    std::thread reader([&]() {
+        auto start = std::chrono::steady_clock::now();
+        l.lock_reader();
+        l.unlock_reader();
+        auto end = std::chrono::steady_clock::now();
+        EXPECT(end - start >= 100ms);
+    });
 
-void test_concurrent_queue() {
-    constexpr auto NumThreads = 4;
-    constexpr auto N = 1000; // каждый producer поток производит N чисел
+    std::this_thread::sleep_for(100ms);
+    l.unlock();
 
-    Queue<int> queue{2};
+    reader.join();
+    PASS();
+}
 
-    std::vector<int> consumed;
-    std::mutex consumed_mutex;
+void test_reader_blocks_writer() {
+    RWLock l;
+    l.lock_reader();
 
-    auto producer_func = [&](int thread_id) {
-        for (int i = 0; i < N; ++i) {
-            int num = thread_id * N + i;
-            queue.push(num);
-        }
-    };
+    std::thread reader([&]() {
+        auto start = std::chrono::steady_clock::now();
+        l.lock();
+        l.unlock();
+        auto end = std::chrono::steady_clock::now();
+        EXPECT(end - start >= 100ms);
+    });
 
-    auto consumer_func = [&]() {
-        for (int i = 0; i < N; ++i) {
-            int num = queue.pop();
+    std::this_thread::sleep_for(100ms);
+    l.unlock_reader();
 
-            std::lock_guard<std::mutex> lock(consumed_mutex);
-            consumed.push_back(num);
-        }
-    };
+    reader.join();
+    PASS();
+}
+
+void test_two_writers_block_each_other() {
+    RWLock l;
+    l.lock();
+
+    std::thread writer2([&]() {
+        auto start = std::chrono::steady_clock::now();
+        l.lock();
+        l.unlock();
+        auto end = std::chrono::steady_clock::now();
+        EXPECT(end - start >= 100ms);
+    });
+
+    std::this_thread::sleep_for(100ms);
+    l.unlock();
+
+    writer2.join();
+    PASS();
+}
+
+void test_high_contention() {
+    RWLock l;
+
+    constexpr auto NumThreads = 8;
+    auto start = std::chrono::steady_clock::now();
 
     std::vector<std::thread> threads;
-
     for (int i = 0; i < NumThreads; ++i) {
-        threads.emplace_back(producer_func, i);
-        threads.emplace_back(consumer_func);
+        threads.emplace_back([&](int idx) {
+            while (std::chrono::steady_clock::now() - start < 100ms) {
+                // половина потоков - читатели, половина - писатели
+                if (idx % 2 == 0) {
+                    l.lock_reader();
+                    l.unlock_reader();
+                } else {
+                    // писатели дольше и реже держат lock
+                    l.lock();
+                    std::this_thread::sleep_for(10us);
+                    l.unlock();
+                    std::this_thread::sleep_for(20us);
+                }
+            }
+        }, i);
     }
 
     for (auto& t : threads) {
         t.join();
     }
-
-    EXPECT(consumed.size() == N * NumThreads);
-
-    std::sort(std::begin(consumed), std::end(consumed));
-
-    for (int i = 1; i < N; ++i) {
-        EXPECT(consumed[i] == consumed[i-1] + 1);
-    }
-
     PASS();
 }
 
 int main() {
     try {
-        test_single_thread_notify();
-        test_concurrent_queue();
+        test_simple();
+        test_readers_dont_block();
+        test_writer_blocks_reader();
+        test_reader_blocks_writer();
+        test_two_writers_block_each_other();
+        test_high_contention();
 
     } catch (const std::exception& e) {
         std::cerr << e.what() << std::endl;
-        return 1;
     }
     return 0;
 }
-/*
- * Усложнение:
- * - реализовать notify_all
- * - реализовать wait с таймаутом
- */
