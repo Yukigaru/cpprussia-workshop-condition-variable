@@ -7,7 +7,6 @@
 
 using namespace std::chrono_literals;
 
-
 class RWLock {
 public:
     void lock_reader() {
@@ -126,21 +125,23 @@ void test_high_contention() {
 
     std::vector<std::thread> threads;
     for (int i = 0; i < NumThreads; ++i) {
-        threads.emplace_back([&](int idx) {
-            while (std::chrono::steady_clock::now() - start < 100ms) {
-                // половина потоков - читатели, половина - писатели
-                if (idx % 2 == 0) {
-                    l.lock_reader();
-                    l.unlock_reader();
-                } else {
-                    // писатели дольше и реже держат lock
-                    l.lock();
-                    std::this_thread::sleep_for(10us);
-                    l.unlock();
-                    std::this_thread::sleep_for(20us);
+        threads.emplace_back(
+            [&](int idx) {
+                while (std::chrono::steady_clock::now() - start < 100ms) {
+                    // половина потоков - читатели, половина - писатели
+                    if (idx % 2 == 0) {
+                        l.lock_reader();
+                        l.unlock_reader();
+                    } else {
+                        // писатели дольше и реже держат lock
+                        l.lock();
+                        std::this_thread::sleep_for(10us);
+                        l.unlock();
+                        std::this_thread::sleep_for(20us);
+                    }
                 }
-            }
-        }, i);
+            },
+            i);
     }
 
     for (auto& t : threads) {

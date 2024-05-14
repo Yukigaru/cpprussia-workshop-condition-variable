@@ -5,7 +5,7 @@
 #include <mutex>
 #include <deque>
 #include <algorithm>
-#include <cstring> // strerror
+#include <cstring>  // strerror
 #include <unistd.h>
 #include <linux/futex.h>
 #include <sys/syscall.h>
@@ -28,7 +28,7 @@ public:
     ConditionVariable() {}
 
     template <typename Predicate>
-    void wait(std::unique_lock<std::mutex> &lock, Predicate pred) {
+    void wait(std::unique_lock<std::mutex>& lock, Predicate pred) {
         // ...
     }
 
@@ -65,9 +65,9 @@ void test_single_thread_notify() {
 template <typename T>
 class Queue {
 public:
-    Queue(size_t limit): _limit(limit) {}
+    Queue(size_t limit) : _limit(limit) {}
 
-    void push(const T &val) {
+    void push(const T& val) {
         std::unique_lock l{_m};
         _not_full_cv.wait(l, [&]() { return _queue.size() < _limit; });
         _queue.push_front(val);
@@ -82,6 +82,7 @@ public:
         _not_full_cv.notify_one();
         return val;
     }
+
 private:
     std::mutex _m;
     ConditionVariable _not_empty_cv;
@@ -92,7 +93,7 @@ private:
 
 void test_concurrent_queue() {
     constexpr auto NumThreads = 4;
-    constexpr auto N = 1000; // каждый producer поток производит N чисел
+    constexpr auto N = 1000;  // каждый producer поток производит N чисел
 
     Queue<int> queue{2};
 
@@ -131,7 +132,7 @@ void test_concurrent_queue() {
     std::sort(std::begin(consumed), std::end(consumed));
 
     for (int i = 1; i < N; ++i) {
-        EXPECT(consumed[i] == consumed[i-1] + 1);
+        EXPECT(consumed[i] == consumed[i - 1] + 1);
     }
 
     PASS();

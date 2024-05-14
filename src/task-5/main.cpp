@@ -9,15 +9,13 @@
 #include <vector>
 #include "tests.h"
 
-
 template <typename T>
 class ConcurrentFIFOQueue {
 public:
     // добавлен лимит на размер очереди
-    ConcurrentFIFOQueue(size_t limit = 0): _limit(limit) {
-    }
+    ConcurrentFIFOQueue(size_t limit = 0) : _limit(limit) {}
 
-    void push(const T &val) {
+    void push(const T& val) {
         std::unique_lock l{_m};
         // ...
     }
@@ -34,7 +32,6 @@ private:
     std::deque<T> _queue;
     size_t _limit;
 };
-
 
 /*
  * Тесты
@@ -93,16 +90,16 @@ void test_push_wait() {
     queue.pop();
     producer.join();
 
-    EXPECT(values_pushed.load() == Limit+1);
+    EXPECT(values_pushed.load() == Limit + 1);
 
     PASS();
 }
 
 void test_multiple_threads() {
     constexpr auto NumThreads = 4;
-    constexpr auto N = 100; // каждый producer поток производит N чисел
+    constexpr auto N = 100;  // каждый producer поток производит N чисел
 
-    ConcurrentFIFOQueue<int> queue{2}; // лимит в 2 элемента
+    ConcurrentFIFOQueue<int> queue{2};  // лимит в 2 элемента
 
     std::vector<int> consumed;
     std::mutex consumed_mutex;
@@ -139,7 +136,7 @@ void test_multiple_threads() {
     std::sort(std::begin(consumed), std::end(consumed));
 
     for (int i = 1; i < N; ++i) {
-        EXPECT(consumed[i] == consumed[i-1] + 1);
+        EXPECT(consumed[i] == consumed[i - 1] + 1);
     }
 
     PASS();

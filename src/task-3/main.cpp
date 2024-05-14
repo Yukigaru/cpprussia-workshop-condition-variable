@@ -11,15 +11,15 @@
 // Потоки блокируются в arrive_and_wait, уменьшая при этом счётчик, пока он не обнулится,
 // после чего все потоки разблокируются.
 class Latch {
-  public:
-    Latch(int64_t threads_expected): _counter(threads_expected) {
-    }
+public:
+    Latch(int64_t threads_expected) : _counter(threads_expected) {}
 
     void arrive_and_wait() {
-      std::unique_lock l{m};
-      // ...
+        std::unique_lock l{m};
+        // ...
     }
-  private:
+
+private:
     std::condition_variable cv;
     std::mutex m;
     int64_t _counter;
@@ -65,17 +65,15 @@ void test_latch_doesnt_reset() {
     t2.join();
 
     // не должно заблокироваться
-    std::thread t3{[&]() {
-        latch.arrive_and_wait();
-    }};
+    std::thread t3{[&]() { latch.arrive_and_wait(); }};
     t3.join();
     PASS();
 }
 
 int main() {
     try {
-      test_latch_synchronizes_threads();
-      test_latch_doesnt_reset();
+        test_latch_synchronizes_threads();
+        test_latch_doesnt_reset();
 
     } catch (const std::exception& e) {
         std::cerr << e.what() << std::endl;

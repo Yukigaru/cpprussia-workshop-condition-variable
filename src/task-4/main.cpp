@@ -9,7 +9,6 @@
 #include <vector>
 #include "tests.h"
 
-
 // Требования к очереди:
 // - first-in-first-out очередь
 // - thread-safe
@@ -18,7 +17,7 @@
 template <typename T>
 class ConcurrentFIFOQueue {
 public:
-    void push(const T &val) {
+    void push(const T& val) {
         // TODO
     }
 
@@ -73,7 +72,7 @@ void test_pop_wait() {
 
 void test_multiple_threads() {
     constexpr auto NumThreads = 4;
-    constexpr auto N = 100; // каждый producer поток производит N чисел
+    constexpr auto N = 100;  // каждый producer поток производит N чисел
 
     ConcurrentFIFOQueue<int> queue;
 
@@ -112,7 +111,7 @@ void test_multiple_threads() {
     std::sort(std::begin(consumed), std::end(consumed));
 
     for (int i = 1; i < N; ++i) {
-        EXPECT(consumed[i] == consumed[i-1] + 1);
+        EXPECT(consumed[i] == consumed[i - 1] + 1);
     }
 
     PASS();

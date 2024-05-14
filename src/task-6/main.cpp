@@ -15,16 +15,15 @@
 template <typename T>
 class ConcurrentFIFOQueue {
 public:
-    ConcurrentFIFOQueue(size_t limit = 0): _limit(limit) {
-    }
+    ConcurrentFIFOQueue(size_t limit = 0) : _limit(limit) {}
 
-    bool push(const T &val, std::chrono::steady_clock::duration timeout = std::chrono::seconds(0)) {
+    bool push(const T& val, std::chrono::steady_clock::duration timeout = std::chrono::seconds(0)) {
         // ждёт, если очередь переполнена, но не дольше, чем timeout (если он задан)
         // возвращает false, если случился timeout
         return true;
     }
 
-    bool pop(T &out, std::chrono::steady_clock::duration timeout = std::chrono::seconds(0)) {
+    bool pop(T& out, std::chrono::steady_clock::duration timeout = std::chrono::seconds(0)) {
         // ждёт, если нет элементов, но не дольше, чем timeout (если он задан)
         // возвращает false, если случился timeout
         return true;
@@ -36,7 +35,6 @@ private:
     std::deque<T> _queue;
     size_t _limit;
 };
-
 
 /*
  * Тесты
@@ -107,16 +105,16 @@ void test_push_wait() {
     queue.pop(unused);
     producer.join();
 
-    EXPECT(values_pushed.load() == Limit+1);
+    EXPECT(values_pushed.load() == Limit + 1);
 
     PASS();
 }
 
 void test_multiple_threads() {
     constexpr auto NumThreads = 4;
-    constexpr auto N = 100; // каждый producer поток производит N чисел
+    constexpr auto N = 100;  // каждый producer поток производит N чисел
 
-    ConcurrentFIFOQueue<int> queue{2}; // лимит в 2 элемента
+    ConcurrentFIFOQueue<int> queue{2};  // лимит в 2 элемента
 
     std::vector<int> consumed;
     std::mutex consumed_mutex;
@@ -154,7 +152,7 @@ void test_multiple_threads() {
     std::sort(std::begin(consumed), std::end(consumed));
 
     for (int i = 1; i < N; ++i) {
-        EXPECT(consumed[i] == consumed[i-1] + 1);
+        EXPECT(consumed[i] == consumed[i - 1] + 1);
     }
 
     PASS();
