@@ -31,9 +31,13 @@ another thread: got the signal and resumed
 3) Для сборки во время workshop'а вы можете напрямую вызывать компилятор в терминале, либо использовать свой IDE (но настраивать нужно будет самостоятельно).
 
 
-4) Желательно, чтобы вы имели опыт с:
-- vector
-- thread
-- mutex
-- классами
-- сборкой проекта через CMake
+### Troubleshooting
+1) В случае ошибки при запуске бинарей:
+```
+FATAL: ThreadSanitizer: unexpected memory mapping 0x74dea7872000-0x74dea7d00000
+```
+Нужно выполнить:
+```
+sudo sysctl vm.mmap_rnd_bits=25
+```
+(работает до момента перезапуска)
