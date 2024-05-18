@@ -14,7 +14,7 @@ using namespace std::chrono_literals;
 // после чего все потоки разблокируются.
 class Latch {
 public:
-    Latch(int64_t threads_expected) {}
+    explicit Latch(int64_t threads_expected) {}
 
     void arrive_and_wait() {
         std::unique_lock l{m};

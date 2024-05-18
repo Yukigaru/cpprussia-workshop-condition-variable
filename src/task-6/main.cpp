@@ -15,7 +15,7 @@
 template <typename T>
 class ConcurrentFIFOQueue {
 public:
-    ConcurrentFIFOQueue(size_t limit = 0) : _limit(limit) {}
+    explicit ConcurrentFIFOQueue(size_t limit = 0) : _limit(limit) {}
 
     bool push(const T& val, std::chrono::steady_clock::duration timeout = std::chrono::seconds(0)) {
         std::unique_lock l{_m};

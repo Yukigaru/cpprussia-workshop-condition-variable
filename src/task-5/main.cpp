@@ -13,7 +13,7 @@ template <typename T>
 class ConcurrentFIFOQueue {
 public:
     // добавлен лимит на размер очереди
-    ConcurrentFIFOQueue(size_t limit = 0) : _limit(limit) {}
+    explicit ConcurrentFIFOQueue(size_t limit = 0) : _limit(limit) {}
 
     void push(const T& val) {
         std::unique_lock l{_m};
