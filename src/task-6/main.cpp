@@ -18,12 +18,14 @@ public:
     ConcurrentFIFOQueue(size_t limit = 0) : _limit(limit) {}
 
     bool push(const T& val, std::chrono::steady_clock::duration timeout = std::chrono::seconds(0)) {
+        std::unique_lock l{_m};
         // ждёт, если очередь переполнена, но не дольше, чем timeout (если он задан)
         // возвращает false, если случился timeout
         return true;
     }
 
     bool pop(T& out, std::chrono::steady_clock::duration timeout = std::chrono::seconds(0)) {
+        std::unique_lock l{_m};
         // ждёт, если нет элементов, но не дольше, чем timeout (если он задан)
         // возвращает false, если случился timeout
         return true;

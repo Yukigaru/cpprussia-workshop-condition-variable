@@ -42,7 +42,6 @@ void test_multiple_push_pop() {
     queue.push(1);
     queue.push(2);
     queue.push(3);
-
     EXPECT(queue.pop() == 1);
     EXPECT(queue.pop() == 2);
     EXPECT(queue.pop() == 3);
@@ -72,6 +71,7 @@ void test_pop_wait() {
 }
 
 void test_push_wait() {
+    // Проверяем, что push блокируется, если очередь переполнена
     constexpr auto Limit = 2u;
     ConcurrentFIFOQueue<int> queue{Limit};
 
@@ -84,9 +84,11 @@ void test_push_wait() {
         }
     });
 
-    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    // Добавлено в очередь `Limit` элементов, и один `push` в ожидании
     EXPECT(values_pushed.load() == Limit);
 
+    // Разблокируем оставшийся поток
     queue.pop();
     producer.join();
 

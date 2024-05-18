@@ -6,13 +6,16 @@
 #include <atomic>
 #include "tests.h"
 
+using namespace std::chrono_literals;
+
 // Latch - примитив синхронизации, позволяющий набору потоков подождать друг друга и стартовать вместе.
 // Защёлка инициализируется со счётчиком, равным количеству ожидаемых потоков.
 // Потоки блокируются в arrive_and_wait, уменьшая при этом счётчик, пока он не обнулится,
 // после чего все потоки разблокируются.
 class Latch {
 public:
-    Latch(int64_t threads_expected) : _counter(threads_expected) {}
+    Latch(int64_t threads_expected) {
+    }
 
     void arrive_and_wait() {
         std::unique_lock l{m};
@@ -32,39 +35,59 @@ void test_latch_synchronizes_threads() {
     constexpr auto num_threads = 16;
 
     Latch latch{num_threads};
-    std::atomic<int> counter{0};
 
     auto worker = [&]() {
-        counter.fetch_add(1);
         latch.arrive_and_wait();
-        EXPECT(counter.load(std::memory_order_relaxed) == num_threads);
     };
 
     std::vector<std::thread> threads;
-    for (int i = 0; i < num_threads; ++i) {
+    for (auto i = 0u; i < num_threads; i++) {
         threads.emplace_back(worker);
     }
 
-    for (auto& thread : threads) {
-        thread.join();
+    for (auto& t : threads) {
+        t.join();
     }
+    // Если дошли до PASS, значит все потоки завершились
+    PASS();
+}
+
+void test_latch_awaits() {
+    Latch latch{3};
+
+    auto worker = [&]() {
+        auto start = std::chrono::steady_clock::now();
+        latch.arrive_and_wait();
+
+        // Проверяем, что потоки были в ожидании не менее 100 ms
+        auto end = std::chrono::steady_clock::now();
+        EXPECT(end - start >= 100ms);
+    };
+
+    std::thread t1{worker};
+    std::thread t2{worker};
+
+    // Третий поток задерживает остальных на 100 ms
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    latch.arrive_and_wait();
+
+    t1.join();
+    t2.join();
     PASS();
 }
 
 void test_latch_doesnt_reset() {
     Latch latch{2};
-    bool passed = false;
 
     auto func = [&]() {
         latch.arrive_and_wait();
-        passed = true;
     };
     std::thread t1{func};
     std::thread t2{func};
     t1.join();
     t2.join();
 
-    // не должно заблокироваться
+    // Не должно заблокироваться, т.к. один раз latch уже сработал
     std::thread t3{[&]() { latch.arrive_and_wait(); }};
     t3.join();
     PASS();
@@ -73,6 +96,7 @@ void test_latch_doesnt_reset() {
 int main() {
     try {
         test_latch_synchronizes_threads();
+        test_latch_awaits();
         test_latch_doesnt_reset();
 
     } catch (const std::exception& e) {

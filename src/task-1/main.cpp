@@ -12,29 +12,29 @@
 
 std::atomic_bool resume{false};
 
-void another_thread_func() {
+void waiting_thread_func() {
     std::cout << "another: waiting..." << std::endl;
 
+    // TODO: замените busy-wait на засыпание с condition_variable
     while (!resume.load()) {
-        // TODO: замените busy-wait на засыпание с condition_variable
     }
 
     std::cout << "another: got the signal!" << std::endl;
 }
 
-void main_thread_func() {
-    std::this_thread::sleep_for(std::chrono::seconds(3));
-    std::cout << "main: signaling the other thread to resume" << std::endl;
+void _thread_func() {
 
-    resume.store(true);
-    // TODO: сделать condition_variable notify_one
 }
 
 int main() {
-    std::thread t1{another_thread_func};
-    std::thread t2{main_thread_func};
+    std::thread t{waiting_thread_func};
 
-    t1.join();
-    t2.join();
+    std::cout << "main: waiting 3 sec..." << std::endl;
+    std::this_thread::sleep_for(std::chrono::seconds(3));
+
+    std::cout << "main: signaling the other thread to resume" << std::endl;
+    resume.store(true);
+
+    t.join();
     return 0;
 }

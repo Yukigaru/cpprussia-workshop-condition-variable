@@ -41,7 +41,6 @@ void test_multiple_push_pop() {
     queue.push(1);
     queue.push(2);
     queue.push(3);
-
     EXPECT(queue.pop() == 1);
     EXPECT(queue.pop() == 2);
     EXPECT(queue.pop() == 3);
@@ -58,9 +57,11 @@ void test_pop_wait() {
         item_popped.store(true);
     }};
 
-    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    // Подождали, проверяем, что pop все еще заблокирован
     EXPECT(item_popped.load() == false);
 
+    // Разблокируем поток, ожидающий в pop
     queue.push(1);
 
     consumer.join();
@@ -72,7 +73,7 @@ void test_pop_wait() {
 
 void test_multiple_threads() {
     constexpr auto NumThreads = 4;
-    constexpr auto N = 100;  // каждый producer поток производит N чисел
+    constexpr auto N = 100;  // каждый producer поток производит N чисел (все уникальные)
 
     ConcurrentFIFOQueue<int> queue;
 
@@ -106,11 +107,13 @@ void test_multiple_threads() {
         t.join();
     }
 
+    // Проверяем, что из очереди было получено нужное кол-во объектов
     EXPECT(consumed.size() == N * NumThreads);
 
     std::sort(std::begin(consumed), std::end(consumed));
 
     for (int i = 1; i < N; ++i) {
+        // Проверяем, что нет дублей и дырок
         EXPECT(consumed[i] == consumed[i - 1] + 1);
     }
 

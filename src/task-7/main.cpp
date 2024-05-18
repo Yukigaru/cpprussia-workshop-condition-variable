@@ -51,12 +51,13 @@ void test_readers_dont_block() {
     RWLock l;
     l.lock_reader();
     std::thread t{[&]() {
-        // не должно заблокироваться
+        // Не должно заблокироваться
         l.lock_reader();
         l.unlock_reader();
     }};
     t.join();
     l.unlock_reader();
+    // Если дошли, значит читатели не блокируют друг друга
     PASS();
 }
 
@@ -118,22 +119,20 @@ void test_two_writers_block_each_other() {
 }
 
 void test_high_contention() {
-    RWLock l;
-
     constexpr auto NumThreads = 8;
-    auto start = std::chrono::steady_clock::now();
+    RWLock l;
 
     std::vector<std::thread> threads;
     for (int i = 0; i < NumThreads; ++i) {
         threads.emplace_back(
             [&](int idx) {
                 while (std::chrono::steady_clock::now() - start < 100ms) {
-                    // половина потоков - читатели, половина - писатели
+                    // Половина потоков - читатели, половина - писатели
                     if (idx % 2 == 0) {
                         l.lock_reader();
                         l.unlock_reader();
                     } else {
-                        // писатели дольше и реже держат lock
+                        // Писатели дольше и реже держат lock
                         l.lock();
                         std::this_thread::sleep_for(10us);
                         l.unlock();
