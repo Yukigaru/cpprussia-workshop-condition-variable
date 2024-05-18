@@ -14,8 +14,7 @@ using namespace std::chrono_literals;
 // после чего все потоки разблокируются.
 class Latch {
 public:
-    Latch(int64_t threads_expected) {
-    }
+    Latch(int64_t threads_expected) {}
 
     void arrive_and_wait() {
         std::unique_lock l{m};
@@ -36,9 +35,7 @@ void test_latch_synchronizes_threads() {
 
     Latch latch{num_threads};
 
-    auto worker = [&]() {
-        latch.arrive_and_wait();
-    };
+    auto worker = [&]() { latch.arrive_and_wait(); };
 
     std::vector<std::thread> threads;
     for (auto i = 0u; i < num_threads; i++) {
@@ -79,9 +76,7 @@ void test_latch_awaits() {
 void test_latch_doesnt_reset() {
     Latch latch{2};
 
-    auto func = [&]() {
-        latch.arrive_and_wait();
-    };
+    auto func = [&]() { latch.arrive_and_wait(); };
     std::thread t1{func};
     std::thread t2{func};
     t1.join();
