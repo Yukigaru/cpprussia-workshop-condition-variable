@@ -69,10 +69,28 @@ void test_wait_then_set_flag() {
     PASS();
 }
 
+void test_lost_wakeup() {
+    for (auto i = 0u; i < 5000; i++) {
+        ThreadFlag flag;
+
+        std::thread t1([&]() {
+            flag.wait();
+        });
+        std::thread t2([&]() {
+            flag.set_flag();
+        });
+
+        t1.join();
+        t2.join();
+    }
+    PASS();
+}
+
 int main() {
     try {
         test_set_flag_before_wait();
         test_wait_then_set_flag();
+        test_lost_wakeup();
 
     } catch (const std::exception& e) {
         std::cerr << e.what() << std::endl;
