@@ -122,6 +122,7 @@ void test_high_contention() {
     constexpr auto NumThreads = 8;
     RWLock l;
 
+    auto start = std::chrono::steady_clock::now();
     std::vector<std::thread> threads;
     for (int i = 0; i < NumThreads; ++i) {
         threads.emplace_back(
