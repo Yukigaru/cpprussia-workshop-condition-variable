@@ -1,5 +1,5 @@
 #include <iostream>
-#include <deque>
+#include <queue>
 #include <mutex>
 #include <condition_variable>
 #include <algorithm>
@@ -29,7 +29,7 @@ public:
 private:
     std::mutex _m;
 
-    std::deque<T> _queue;
+    std::queue<T> _queue;
     size_t _limit;
 };
 
