@@ -80,9 +80,9 @@ void test_multiple_threads() {
     std::vector<int> consumed;
     std::mutex consumed_mutex;
 
-    auto producer_func = [&](int thread_id) {
+    auto producer_func = [&](int thread_num) {
         for (int i = 0; i < N; ++i) {
-            int num = thread_id * N + i;
+            int num = thread_num * N + i;
             queue.push(num);
         }
     };
