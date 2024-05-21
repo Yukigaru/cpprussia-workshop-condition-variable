@@ -40,6 +40,6 @@ FATAL: ThreadSanitizer: unexpected memory mapping 0x74dea7872000-0x74dea7d00000
 ```
 Нужно выполнить:
 ```
-sudo sysctl vm.mmap_rnd_bits=25
+sudo sysctl vm.mmap_rnd_bits=28
 ```
 (работает до момента перезапуска)
