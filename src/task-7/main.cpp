@@ -9,12 +9,12 @@ using namespace std::chrono_literals;
 
 class RWLock {
 public:
-    void lock_reader() {
+    void lock_shared() {
         std::unique_lock l{_m};
         // ...
     }
 
-    void unlock_reader() {
+    void unlock_shared() {
         std::unique_lock l{_m};
         // ...
     }
@@ -42,21 +42,21 @@ void test_simple() {
     RWLock l;
     l.lock();
     l.unlock();
-    l.lock_reader();
-    l.unlock_reader();
+    l.lock_shared();
+    l.unlock_shared();
     PASS();
 }
 
 void test_readers_dont_block() {
     RWLock l;
-    l.lock_reader();
+    l.lock_shared();
     std::thread t{[&]() {
         // Не должно заблокироваться
-        l.lock_reader();
-        l.unlock_reader();
+        l.lock_shared();
+        l.unlock_shared();
     }};
     t.join();
-    l.unlock_reader();
+    l.unlock_shared();
     // Если дошли, значит читатели не блокируют друг друга
     PASS();
 }
@@ -67,8 +67,8 @@ void test_writer_blocks_reader() {
 
     std::thread reader([&]() {
         auto start = std::chrono::steady_clock::now();
-        l.lock_reader();
-        l.unlock_reader();
+        l.lock_shared();
+        l.unlock_shared();
         auto end = std::chrono::steady_clock::now();
         EXPECT(end - start >= 100ms);
     });
@@ -82,7 +82,7 @@ void test_writer_blocks_reader() {
 
 void test_reader_blocks_writer() {
     RWLock l;
-    l.lock_reader();
+    l.lock_shared();
 
     std::thread reader([&]() {
         auto start = std::chrono::steady_clock::now();
@@ -93,7 +93,7 @@ void test_reader_blocks_writer() {
     });
 
     std::this_thread::sleep_for(100ms);
-    l.unlock_reader();
+    l.unlock_shared();
 
     reader.join();
     PASS();
@@ -130,8 +130,8 @@ void test_high_contention() {
                 while (std::chrono::steady_clock::now() - start < 100ms) {
                     // Половина потоков - читатели, половина - писатели
                     if (idx % 2 == 0) {
-                        l.lock_reader();
-                        l.unlock_reader();
+                        l.lock_shared();
+                        l.unlock_shared();
                     } else {
                         // Писатели дольше и реже держат lock
                         l.lock();
