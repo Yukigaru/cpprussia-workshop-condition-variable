@@ -17,13 +17,13 @@ public:
     explicit Latch(int64_t threads_expected) {}
 
     void arrive_and_wait() {
-        std::unique_lock l{m};
+        std::unique_lock l{_m};
         // ...
     }
 
 private:
-    std::condition_variable cv;
-    std::mutex m;
+    std::condition_variable _cv;
+    std::mutex _m;
     int64_t _counter;
 };
 
