@@ -118,7 +118,7 @@ void test_two_writers_block_each_other() {
     PASS();
 }
 
-void test_high_contention() {
+void test_many_threads() {
     constexpr auto NumThreads = 8;
     RWLock l;
 
@@ -157,7 +157,7 @@ int main() {
         test_writer_blocks_reader();
         test_reader_blocks_writer();
         test_two_writers_block_each_other();
-        test_high_contention();
+        test_many_threads();
 
     } catch (const std::exception& e) {
         std::cerr << e.what() << std::endl;

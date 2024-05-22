@@ -22,8 +22,6 @@ void waiting_thread_func() {
     std::cout << "another: got the signal!" << std::endl;
 }
 
-void _thread_func() {}
-
 int main() {
     std::thread t{waiting_thread_func};
 
